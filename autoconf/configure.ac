@@ -395,6 +395,7 @@ AC_CACHE_CHECK([target architecture],[llvm_cv_target_arch],
   powerpc*-*)             llvm_cv_target_arch="PowerPC" ;;
   arm*-*)                 llvm_cv_target_arch="ARM" ;;
   aarch64*-*)             llvm_cv_target_arch="AArch64" ;;
+  arcompact*-*)           llvm_cv_target_arch="ARCompact" ;;
   mips-* | mips64-*)      llvm_cv_target_arch="Mips" ;;
   mipsel-* | mips64el-*)  llvm_cv_target_arch="Mips" ;;
   xcore-*)                llvm_cv_target_arch="XCore" ;;
@@ -430,6 +431,7 @@ case $host in
   powerpc*-*)             host_arch="PowerPC" ;;
   arm*-*)                 host_arch="ARM" ;;
   aarch64*-*)             host_arch="AArch64" ;;
+  arcompact*-*)           host_arch="ARCompact" ;;
   mips-* | mips64-*)      host_arch="Mips" ;;
   mipsel-* | mips64el-*)  host_arch="Mips" ;;
   xcore-*)                host_arch="XCore" ;;
@@ -797,14 +799,14 @@ dnl Allow specific targets to be specified for building (or not)
 TARGETS_TO_BUILD=""
 AC_ARG_ENABLE([targets],AS_HELP_STRING([--enable-targets],
     [Build specific host targets: all or target1,target2,... Valid targets are:
-     host, x86, x86_64, sparc, powerpc, arm, aarch64, mips, hexagon,
+     host, x86, x86_64, sparc, powerpc, arm, aarch64, arcompact, mips, hexagon,
      xcore, msp430, nvptx, systemz, r600, and cpp (default=all)]),,
     enableval=all)
 if test "$enableval" = host-only ; then
   enableval=host
 fi
 case "$enableval" in
-  all) TARGETS_TO_BUILD="X86 Sparc PowerPC AArch64 ARM Mips XCore MSP430 CppBackend MBlaze NVPTX Hexagon SystemZ R600" ;;
+  all) TARGETS_TO_BUILD="X86 Sparc PowerPC AArch64 ARCompact ARM Mips XCore MSP430 CppBackend MBlaze NVPTX Hexagon SystemZ R600" ;;
   *)for a_target in `echo $enableval|sed -e 's/,/ /g' ` ; do
       case "$a_target" in
         x86)      TARGETS_TO_BUILD="X86 $TARGETS_TO_BUILD" ;;
@@ -812,6 +814,7 @@ case "$enableval" in
         sparc)    TARGETS_TO_BUILD="Sparc $TARGETS_TO_BUILD" ;;
         powerpc)  TARGETS_TO_BUILD="PowerPC $TARGETS_TO_BUILD" ;;
         aarch64)  TARGETS_TO_BUILD="AArch64 $TARGETS_TO_BUILD" ;;
+        arcompact)TARGETS_TO_BUILD="ARCompact $TARGETS_TO_BUILD" ;;
         arm)      TARGETS_TO_BUILD="ARM $TARGETS_TO_BUILD" ;;
         mips)     TARGETS_TO_BUILD="Mips $TARGETS_TO_BUILD" ;;
         mipsel)   TARGETS_TO_BUILD="Mips $TARGETS_TO_BUILD" ;;
@@ -831,6 +834,7 @@ case "$enableval" in
             Sparc)       TARGETS_TO_BUILD="Sparc $TARGETS_TO_BUILD" ;;
             PowerPC)     TARGETS_TO_BUILD="PowerPC $TARGETS_TO_BUILD" ;;
             AArch64)     TARGETS_TO_BUILD="AArch64 $TARGETS_TO_BUILD" ;;
+            ARCompact)   TARGETS_TO_BUILD="ARCompact $TARGETS_TO_BUILD" ;;
             ARM)         TARGETS_TO_BUILD="ARM $TARGETS_TO_BUILD" ;;
             Mips)        TARGETS_TO_BUILD="Mips $TARGETS_TO_BUILD" ;;
             MBlaze)      TARGETS_TO_BUILD="MBlaze $TARGETS_TO_BUILD" ;;

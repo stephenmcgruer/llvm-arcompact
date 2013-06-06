@@ -75,6 +75,7 @@ set(LLVM_LIBDIR_SUFFIX "" CACHE STRING "Define suffix of library directory name 
 
 set(LLVM_ALL_TARGETS
   AArch64
+  ARCompact
   ARM
   CppBackend
   Hexagon

@@ -20,6 +20,7 @@ const char *Triple::getArchTypeName(ArchType Kind) {
   case UnknownArch: return "unknown";
 
   case aarch64: return "aarch64";
+  case arcompact: return "arcompact";
   case arm:     return "arm";
   case hexagon: return "hexagon";
   case mips:    return "mips";
@@ -56,6 +57,8 @@ const char *Triple::getArchTypePrefix(ArchType Kind) {
     return 0;
 
   case aarch64: return "aarch64";
+
+  case arcompact: return "arcompact";
 
   case arm:
   case thumb:   return "arm";
@@ -159,6 +162,7 @@ const char *Triple::getEnvironmentTypeName(EnvironmentType Kind) {
 Triple::ArchType Triple::getArchTypeForLLVMName(StringRef Name) {
   return StringSwitch<Triple::ArchType>(Name)
     .Case("aarch64", aarch64)
+    .Case("arcompact", arcompact)
     .Case("arm", arm)
     .Case("mips", mips)
     .Case("mipsel", mipsel)
@@ -224,6 +228,7 @@ static Triple::ArchType parseArch(StringRef ArchName) {
     .Cases("powerpc64", "ppu", Triple::ppc64)
     .Case("mblaze", Triple::mblaze)
     .Case("aarch64", Triple::aarch64)
+    .Case("arcompact", Triple::arcompact)
     .Cases("arm", "xscale", Triple::arm)
     // FIXME: It would be good to replace these with explicit names for all the
     // various suffixes supported.
@@ -669,6 +674,7 @@ static unsigned getArchPointerBitWidth(llvm::Triple::ArchType Arch) {
     return 16;
 
   case llvm::Triple::amdil:
+  case llvm::Triple::arcompact:
   case llvm::Triple::arm:
   case llvm::Triple::hexagon:
   case llvm::Triple::le32:
@@ -723,6 +729,7 @@ Triple Triple::get32BitArchVariant() const {
     break;
 
   case Triple::amdil:
+  case Triple::arcompact:
   case Triple::spir:
   case Triple::arm:
   case Triple::hexagon:

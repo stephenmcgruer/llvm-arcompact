@@ -47,6 +47,7 @@ public:
 
     arm,     // ARM: arm, armv.*, xscale
     aarch64, // AArch64: aarch64
+    arcompact, // ARCompact : arcompact
     hexagon, // Hexagon: hexagon
     mips,    // MIPS: mips, mipsallegrex
     mipsel,  // MIPSEL: mipsel, mipsallegrexel
