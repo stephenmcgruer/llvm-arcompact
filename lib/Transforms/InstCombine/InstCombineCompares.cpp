@@ -710,8 +710,9 @@ Instruction *InstCombiner::FoldGEPICmp(GEPOperator *GEPLHS, Value *RHS,
           }
         }
 
-      if (NumDifferences == 0)   // SAME GEP? No comparison is needed here.
-        return ReplaceInstUsesWith(I, Builder->getInt1(Cond));
+      if (NumDifferences == 0)   // SAME GEP?
+        return ReplaceInstUsesWith(I, // No comparison is needed here.
+                             Builder->getInt1(ICmpInst::isTrueWhenEqual(Cond)));
 
       else if (NumDifferences == 1 && GEPsInBounds) {
         Value *LHSV = GEPLHS->getOperand(DiffOperand);
@@ -2873,7 +2874,7 @@ Instruction *InstCombiner::FoldFCmp_IntToFP_Cst(FCmpInst &I,
   case FCmpInst::FCMP_ORD:
     return ReplaceInstUsesWith(I, Builder->getTrue());
   case FCmpInst::FCMP_UNO:
-    return ReplaceInstUsesWith(I, Builder->getTrue());
+    return ReplaceInstUsesWith(I, Builder->getFalse());
   }
 
   IntegerType *IntTy = cast<IntegerType>(LHSI->getOperand(0)->getType());

@@ -161,6 +161,14 @@ define i64 @loads(i64* %p, i32* %q, i32* %r, i16* %s) {
   ret i64 %x3
 }
 
+; CHECK: load_bool
+; CHECK: ldub [%i0], %i0
+define i64 @load_bool(i1* %p) {
+  %a = load i1* %p
+  %b = zext i1 %a to i64
+  ret i64 %b
+}
+
 ; CHECK: stores
 ; CHECK: ldx [%i0+8], [[R:%[goli][0-7]]]
 ; CHECK: stx [[R]], [%i0+16]
@@ -230,7 +238,7 @@ entry:
 declare void @g(i8*)
 
 ; CHECK: expand_setcc
-; CHECK: subcc %i0, 1,
+; CHECK: cmp %i0, 1
 ; CHECK: movl %xcc, 1,
 define i32 @expand_setcc(i64 %a) {
   %cond = icmp sle i64 %a, 0

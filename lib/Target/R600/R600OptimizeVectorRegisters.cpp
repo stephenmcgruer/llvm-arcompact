@@ -104,7 +104,7 @@ private:
 public:
   static char ID;
   R600VectorRegMerger(TargetMachine &tm) : MachineFunctionPass(ID),
-  TII (static_cast<const R600InstrInfo *>(tm.getInstrInfo())) { }
+  TII(0) { }
 
   void getAnalysisUsage(AnalysisUsage &AU) const {
     AU.setPreservesCFG();
@@ -159,6 +159,17 @@ bool R600VectorRegMerger::tryMergeVector(const RegSeqInfo *Untouched,
   return true;
 }
 
+static
+unsigned getReassignedChan(
+    const std::vector<std::pair<unsigned, unsigned> > &RemapChan,
+    unsigned Chan) {
+  for (unsigned j = 0, je = RemapChan.size(); j < je; j++) {
+    if (RemapChan[j].first == Chan)
+      return RemapChan[j].second;
+  }
+  llvm_unreachable("Chan wasn't reassigned");
+}
+
 MachineInstr *R600VectorRegMerger::RebuildVector(
     RegSeqInfo *RSI, const RegSeqInfo *BaseRSI,
     const std::vector<std::pair<unsigned, unsigned> > &RemapChan) const {
@@ -179,24 +190,21 @@ MachineInstr *R600VectorRegMerger::RebuildVector(
     unsigned DstReg = MRI->createVirtualRegister(&AMDGPU::R600_Reg128RegClass);
     unsigned SubReg = (*It).first;
     unsigned Swizzle = (*It).second;
-    unsigned Chan = 0xDEADBEEF;
-    for (unsigned j = 0, je = RemapChan.size(); j < je; j++) {
-      if (RemapChan[j].first == Swizzle) {
-        Chan = RemapChan[j].second;
-        break;
-      }
-    }
+    unsigned Chan = getReassignedChan(RemapChan, Swizzle);
+
     MachineInstr *Tmp = BuildMI(MBB, Pos, DL, TII->get(AMDGPU::INSERT_SUBREG),
         DstReg)
         .addReg(SrcVec)
         .addReg(SubReg)
         .addImm(Chan);
     UpdatedRegToChan[SubReg] = Chan;
-    for (std::vector<unsigned>::iterator RemoveIt = UpdatedUndef.begin(),
-        RemoveE = UpdatedUndef.end(); RemoveIt != RemoveE; ++ RemoveIt) {
-      if (*RemoveIt == Chan)
-        UpdatedUndef.erase(RemoveIt);
-    }
+    std::vector<unsigned>::iterator ChanPos =
+        std::find(UpdatedUndef.begin(), UpdatedUndef.end(), Chan);
+    if (ChanPos != UpdatedUndef.end())
+      UpdatedUndef.erase(ChanPos);
+    assert(std::find(UpdatedUndef.begin(), UpdatedUndef.end(), Chan) ==
+               UpdatedUndef.end() &&
+           "UpdatedUndef shouldn't contain Chan more than once!");
     DEBUG(dbgs() << "    ->"; Tmp->dump(););
     (void)Tmp;
     SrcVec = DstReg;
@@ -306,6 +314,7 @@ void R600VectorRegMerger::trackRSI(const RegSeqInfo &RSI) {
 }
 
 bool R600VectorRegMerger::runOnMachineFunction(MachineFunction &Fn) {
+  TII = static_cast<const R600InstrInfo *>(Fn.getTarget().getInstrInfo());
   MRI = &(Fn.getRegInfo());
   for (MachineFunction::iterator MBB = Fn.begin(), MBBe = Fn.end();
        MBB != MBBe; ++MBB) {

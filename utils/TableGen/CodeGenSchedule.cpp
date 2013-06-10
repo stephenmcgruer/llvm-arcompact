@@ -890,9 +890,9 @@ void CodeGenSchedModels::inferFromItinClass(Record *ItinClassDef,
 
 /// Infer classes from per-processor InstReadWrite definitions.
 void CodeGenSchedModels::inferFromInstRWs(unsigned SCIdx) {
-  const RecVec &RWDefs = SchedClasses[SCIdx].InstRWs;
-  for (RecIter RWI = RWDefs.begin(), RWE = RWDefs.end(); RWI != RWE; ++RWI) {
-    const RecVec *InstDefs = Sets.expand(*RWI);
+  for (unsigned I = 0, E = SchedClasses[SCIdx].InstRWs.size(); I != E; ++I) {
+    Record *Rec = SchedClasses[SCIdx].InstRWs[I];
+    const RecVec *InstDefs = Sets.expand(Rec);
     RecIter II = InstDefs->begin(), IE = InstDefs->end();
     for (; II != IE; ++II) {
       if (InstrClassMap[*II] == SCIdx)
@@ -903,10 +903,10 @@ void CodeGenSchedModels::inferFromInstRWs(unsigned SCIdx) {
     if (II == IE)
       continue;
     IdxVec Writes, Reads;
-    findRWs((*RWI)->getValueAsListOfDefs("OperandReadWrites"), Writes, Reads);
-    unsigned PIdx = getProcModel((*RWI)->getValueAsDef("SchedModel")).Index;
+    findRWs(Rec->getValueAsListOfDefs("OperandReadWrites"), Writes, Reads);
+    unsigned PIdx = getProcModel(Rec->getValueAsDef("SchedModel")).Index;
     IdxVec ProcIndices(1, PIdx);
-    inferFromRW(Writes, Reads, SCIdx, ProcIndices);
+    inferFromRW(Writes, Reads, SCIdx, ProcIndices); // May mutate SchedClasses.
   }
 }
 
@@ -1172,6 +1172,8 @@ pushVariant(const TransVariant &VInfo, bool IsRead) {
     unsigned OperIdx = RWSequences.size()-1;
     // Make N-1 copies of this transition's last sequence.
     for (unsigned i = 1, e = SelectedRWs.size(); i != e; ++i) {
+      // Create a temporary copy the vector could reallocate.
+      RWSequences.reserve(RWSequences.size() + 1);
       RWSequences.push_back(RWSequences[OperIdx]);
     }
     // Push each of the N elements of the SelectedRWs onto a copy of the last

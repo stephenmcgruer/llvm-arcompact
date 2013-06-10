@@ -1315,6 +1315,12 @@ SparcTargetLowering::SparcTargetLowering(TargetMachine &TM)
   // on SparcV8 and later.
   setOperationAction(ISD::ATOMIC_FENCE, MVT::Other, Expand);
 
+  if (!Subtarget->isV9()) {
+    // SparcV8 does not have FNEGD and FABSD.
+    setOperationAction(ISD::FNEG, MVT::f64, Custom);
+    setOperationAction(ISD::FABS, MVT::f64, Custom);
+  }
+
   setOperationAction(ISD::FSIN , MVT::f64, Expand);
   setOperationAction(ISD::FCOS , MVT::f64, Expand);
   setOperationAction(ISD::FSINCOS, MVT::f64, Expand);
@@ -1365,7 +1371,7 @@ SparcTargetLowering::SparcTargetLowering(TargetMachine &TM)
 
   setStackPointerRegisterToSaveRestore(SP::O6);
 
-  if (TM.getSubtarget<SparcSubtarget>().isV9())
+  if (Subtarget->isV9())
     setOperationAction(ISD::CTPOP, MVT::i32, Legal);
 
   setMinFunctionAlignment(2);
@@ -1575,9 +1581,7 @@ static SDValue LowerBR_CC(SDValue Op, SelectionDAG &DAG) {
   // Get the condition flag.
   SDValue CompareFlag;
   if (LHS.getValueType().isInteger()) {
-    EVT VTs[] = { LHS.getValueType(), MVT::Glue };
-    SDValue Ops[2] = { LHS, RHS };
-    CompareFlag = DAG.getNode(SPISD::CMPICC, dl, VTs, Ops, 2).getValue(1);
+    CompareFlag = DAG.getNode(SPISD::CMPICC, dl, MVT::Glue, LHS, RHS);
     if (SPCC == ~0U) SPCC = IntCondCCodeToICC(CC);
     // 32-bit compares use the icc flags, 64-bit uses the xcc flags.
     Opc = LHS.getValueType() == MVT::i32 ? SPISD::BRICC : SPISD::BRXCC;
@@ -1605,10 +1609,7 @@ static SDValue LowerSELECT_CC(SDValue Op, SelectionDAG &DAG) {
 
   SDValue CompareFlag;
   if (LHS.getValueType().isInteger()) {
-    // subcc returns a value
-    EVT VTs[] = { LHS.getValueType(), MVT::Glue };
-    SDValue Ops[2] = { LHS, RHS };
-    CompareFlag = DAG.getNode(SPISD::CMPICC, dl, VTs, Ops, 2).getValue(1);
+    CompareFlag = DAG.getNode(SPISD::CMPICC, dl, MVT::Glue, LHS, RHS);
     Opc = LHS.getValueType() == MVT::i32 ?
           SPISD::SELECT_ICC : SPISD::SELECT_XCC;
     if (SPCC == ~0U) SPCC = IntCondCCodeToICC(CC);
@@ -1756,10 +1757,42 @@ static SDValue LowerRETURNADDR(SDValue Op, SelectionDAG &DAG) {
   return RetAddr;
 }
 
+static SDValue LowerF64Op(SDValue Op, SelectionDAG &DAG)
+{
+  SDLoc dl(Op);
+
+  assert(Op.getValueType() == MVT::f64 && "LowerF64Op called on non-double!");
+  assert(Op.getOpcode() == ISD::FNEG || Op.getOpcode() == ISD::FABS);
+
+  // Lower fneg/fabs on f64 to fneg/fabs on f32.
+  // fneg f64 => fneg f32:sub_even, fmov f32:sub_odd.
+  // fabs f64 => fabs f32:sub_even, fmov f32:sub_odd.
+
+  SDValue SrcReg64 = Op.getOperand(0);
+  SDValue Hi32 = DAG.getTargetExtractSubreg(SP::sub_even, dl, MVT::f32,
+                                            SrcReg64);
+  SDValue Lo32 = DAG.getTargetExtractSubreg(SP::sub_odd, dl, MVT::f32,
+                                            SrcReg64);
+
+  Hi32 = DAG.getNode(Op.getOpcode(), dl, MVT::f32, Hi32);
+
+  SDValue DstReg64 = SDValue(DAG.getMachineNode(TargetOpcode::IMPLICIT_DEF,
+                                                dl, MVT::f64), 0);
+  DstReg64 = DAG.getTargetInsertSubreg(SP::sub_even, dl, MVT::f64,
+                                       DstReg64, Hi32);
+  DstReg64 = DAG.getTargetInsertSubreg(SP::sub_odd, dl, MVT::f64,
+                                       DstReg64, Lo32);
+  return DstReg64;
+}
+
 SDValue SparcTargetLowering::
 LowerOperation(SDValue Op, SelectionDAG &DAG) const {
   switch (Op.getOpcode()) {
   default: llvm_unreachable("Should not custom lower this!");
+
+  case ISD::FNEG:
+  case ISD::FABS:               return LowerF64Op(Op, DAG);
+
   case ISD::RETURNADDR:         return LowerRETURNADDR(Op, DAG);
   case ISD::FRAMEADDR:          return LowerFRAMEADDR(Op, DAG);
   case ISD::GlobalTLSAddress:
